@@ -17,6 +17,10 @@ npm install
 npm run start
 ```
 
+You can now make requests to `http://localhost:3000`. Verify things are running smoothly by issuing a GET request to `http://localhost:3000/health`.
+
+If using insomnia, you can import the requests collection in the `insomnia` folder. This has sample requests made with an example in this README.
+
 ## Description
 
 Build a webservice that fulfils the documented API. The API is described below. A formal definition is provided
