@@ -34,7 +34,7 @@ export function build(opts = {}) {
         body: receiptProcessSchema,
       },
     },
-    async (request, reply): Promise<{ id: string }> => {
+    async (request): Promise<{ id: string }> => {
       const payload = request.body;
       const id = uuidv4();
 
@@ -88,13 +88,13 @@ export function getPointsBreakdown(receipt: Receipt): {
   // 50 points if the total is a round dollar amount with no cents.
   let roundDollarPoints = 0;
   const receiptTotal = parseFloat(receipt.total);
-  if (receiptTotal % 1 === 0) {
+  if (receiptTotal > 0 && receiptTotal % 1 === 0) {
     roundDollarPoints += 50;
   }
 
   // 25 points if the total is a multiple of `0.25`.
   let multipleOfTwentyFiveCentsPoints = 0;
-  if (receiptTotal % 0.25 === 0) {
+  if (receiptTotal > 0 && receiptTotal % 0.25 === 0) {
     multipleOfTwentyFiveCentsPoints += 25;
   }
 
@@ -106,7 +106,7 @@ export function getPointsBreakdown(receipt: Receipt): {
   let trimmedLengthPoints = 0;
   for (const item of receipt.items) {
     const trimmedLength = item.shortDescription.trim().length;
-    if (trimmedLength % 3 === 0) {
+    if (trimmedLength > 0 && trimmedLength % 3 === 0) {
       trimmedLengthPoints += Math.ceil(parseFloat(item.price) * 0.2);
     }
   }
@@ -119,9 +119,10 @@ export function getPointsBreakdown(receipt: Receipt): {
   }
 
   // 10 points if the time of purchase is after 2:00pm and before 4:00pm.
+  // We are considering boundaries to be not inclusive (i.e. 2:00pm and 4:00pm are not included)
   let timeOfPurchasePoints = 0;
   const [hours, minutes] = receipt.purchaseTime.split(":").map(Number);
-  if (hours === 14 || (hours === 15 && minutes < 60)) {
+  if ((hours === 14 && minutes > 0) || (hours === 15 && minutes < 60)) {
     timeOfPurchasePoints += 10;
   }
 

@@ -59,6 +59,22 @@ describe("receipt-processor-api", () => {
 
       expect(response.statusCode).toBe(400);
     });
+
+    it("should return 400 for negative dollar amount", async () => {
+      const response = await fastify.inject({
+        method: "POST",
+        url: "/receipts/process",
+        body: {
+          retailer: "Target",
+          purchaseDate: "2022-01-02",
+          purchaseTime: "13:01",
+          total: "-1.00",
+          items: [],
+        },
+      });
+
+      expect(response.statusCode).toBe(400);
+    });
   });
 
   describe("GET /receipts/:id/points", () => {
@@ -109,6 +125,48 @@ describe("receipt-processor-api", () => {
   });
 
   describe("calculatePoints", () => {
+    it("should return 0 points for non-alphanumeric in the retailer name", () => {
+      const receipt: Receipt = {
+        retailer: "!!!!",
+        purchaseDate: "2022-01-02",
+        purchaseTime: "13:01",
+        total: "6.49",
+        items: [],
+      };
+
+      const pointsBreakdown = getPointsBreakdown(receipt);
+
+      expect(pointsBreakdown.alphaNumericPoints).toBe(0);
+    });
+
+    it("should return 4 point for a single numeric characters in the retailer name", () => {
+      const receipt: Receipt = {
+        retailer: "1234",
+        purchaseDate: "2022-01-02",
+        purchaseTime: "13:01",
+        total: "6.49",
+        items: [],
+      };
+
+      const pointsBreakdown = getPointsBreakdown(receipt);
+
+      expect(pointsBreakdown.alphaNumericPoints).toBe(4);
+    });
+
+    it("should return points for retailer name with spaces in front of and behind name", () => {
+      const receipt: Receipt = {
+        retailer: "   Target   ",
+        purchaseDate: "2022-01-02",
+        purchaseTime: "13:01",
+        total: "6.49",
+        items: [],
+      };
+
+      const pointsBreakdown = getPointsBreakdown(receipt);
+
+      expect(pointsBreakdown.alphaNumericPoints).toBe(6);
+    });
+
     it("should return 1 point for every alphanumeric character in the retailer name", () => {
       const receipt: Receipt = {
         retailer: "Target",
@@ -123,6 +181,20 @@ describe("receipt-processor-api", () => {
       expect(pointsBreakdown.alphaNumericPoints).toBe(6);
     });
 
+    it("should return 0 points for 0 dollar amount", () => {
+      const receipt: Receipt = {
+        retailer: "Target",
+        purchaseDate: "2022-01-02",
+        purchaseTime: "13:01",
+        total: "0.00",
+        items: [],
+      };
+
+      const pointsBreakdown = getPointsBreakdown(receipt);
+
+      expect(pointsBreakdown.roundDollarPoints).toBe(0);
+    });
+
     it("should add 50 points for a round dollar amount with no cents", () => {
       const receipt: Receipt = {
         retailer: "Target",
@@ -135,6 +207,34 @@ describe("receipt-processor-api", () => {
       const pointsBreakdown = getPointsBreakdown(receipt);
 
       expect(pointsBreakdown.roundDollarPoints).toBe(50);
+    });
+
+    it("should add 25 points for fractional total of 0.25", () => {
+      const receipt: Receipt = {
+        retailer: "Target",
+        purchaseDate: "2022-01-02",
+        purchaseTime: "13:01",
+        total: "0.25",
+        items: [],
+      };
+
+      const pointsBreakdown = getPointsBreakdown(receipt);
+
+      expect(pointsBreakdown.multipleOfTwentyFiveCentsPoints).toBe(25);
+    });
+
+    it("should not add 25 points for total of 0", () => {
+      const receipt: Receipt = {
+        retailer: "Target",
+        purchaseDate: "2022-01-02",
+        purchaseTime: "13:01",
+        total: "0.00",
+        items: [],
+      };
+
+      const pointsBreakdown = getPointsBreakdown(receipt);
+
+      expect(pointsBreakdown.multipleOfTwentyFiveCentsPoints).toBe(0);
     });
 
     it("should add 25 points for a total that is a multiple of 0.25", () => {
@@ -169,6 +269,25 @@ describe("receipt-processor-api", () => {
       expect(pointsBreakdown.itemPoints).toBe(5);
     });
 
+    it("should add 10 points for four items on the receipt", () => {
+      const receipt: Receipt = {
+        retailer: "Target",
+        purchaseDate: "2022-01-02",
+        purchaseTime: "13:01",
+        total: "10.25",
+        items: [
+          { shortDescription: "Mountain Dew", price: "6.49" },
+          { shortDescription: "Mountain Dew", price: "6.49" },
+          { shortDescription: "Mountain Dew", price: "6.49" },
+          { shortDescription: "Mountain Dew", price: "6.49" },
+        ],
+      };
+
+      const pointsBreakdown = getPointsBreakdown(receipt);
+
+      expect(pointsBreakdown.itemPoints).toBe(10);
+    });
+
     it("should add points based on item description length", () => {
       const receipt: Receipt = {
         retailer: "Target",
@@ -181,6 +300,20 @@ describe("receipt-processor-api", () => {
       const pointsBreakdown = getPointsBreakdown(receipt);
 
       expect(pointsBreakdown.trimmedLengthPoints).toBe(2);
+    });
+
+    it("should not add points for item without description", () => {
+      const receipt: Receipt = {
+        retailer: "Target",
+        purchaseDate: "2022-01-02",
+        purchaseTime: "13:01",
+        total: "10.25",
+        items: [{ shortDescription: "", price: "6.49" }],
+      };
+
+      const pointsBreakdown = getPointsBreakdown(receipt);
+
+      expect(pointsBreakdown.trimmedLengthPoints).toBe(0);
     });
 
     it("should add 6 points if the day in the purchase date is odd", () => {
@@ -197,6 +330,20 @@ describe("receipt-processor-api", () => {
       expect(pointsBreakdown.oddDayPoints).toBe(6);
     });
 
+    it("should not add points if the purchaseDate is invalid", () => {
+      const receipt: Receipt = {
+        retailer: "Target",
+        purchaseDate: "invalid",
+        purchaseTime: "13:01",
+        total: "10.25",
+        items: [],
+      };
+
+      const pointsBreakdown = getPointsBreakdown(receipt);
+
+      expect(pointsBreakdown.oddDayPoints).toBe(0);
+    });
+
     it("should add 10 points if the time of purchase is after 2:00pm and before 4:00pm", () => {
       const receipt: Receipt = {
         retailer: "Target",
@@ -209,6 +356,34 @@ describe("receipt-processor-api", () => {
       const pointsBreakdown = getPointsBreakdown(receipt);
 
       expect(pointsBreakdown.timeOfPurchasePoints).toBe(10);
+    });
+
+    it("should not add 10 points if the time is at exactly 2:00pm", () => {
+      const receipt: Receipt = {
+        retailer: "Target",
+        purchaseDate: "2022-01-02",
+        purchaseTime: "14:00",
+        total: "10.25",
+        items: [],
+      };
+
+      const pointsBreakdown = getPointsBreakdown(receipt);
+
+      expect(pointsBreakdown.timeOfPurchasePoints).toBe(0);
+    });
+
+    it("should not add 10 points if the time is at exactly 4:00pm", () => {
+      const receipt: Receipt = {
+        retailer: "Target",
+        purchaseDate: "2022-01-02",
+        purchaseTime: "16:00",
+        total: "10.25",
+        items: [],
+      };
+
+      const pointsBreakdown = getPointsBreakdown(receipt);
+
+      expect(pointsBreakdown.timeOfPurchasePoints).toBe(0);
     });
 
     it("should return correct points for example 1", async () => {
