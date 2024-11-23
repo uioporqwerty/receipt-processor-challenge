@@ -3,7 +3,7 @@ import { describe, it, expect } from "@jest/globals";
 import { v4 as uuidv4 } from "uuid";
 import { build, getPointsBreakdown, Receipt } from "../src/app";
 
-describe("Fastify API", () => {
+describe("receipt-processor-api", () => {
   let fastify: FastifyInstance;
 
   beforeAll(() => {
@@ -14,76 +14,98 @@ describe("Fastify API", () => {
     fastify.close();
   });
 
-  it("should return status ok for /health", async () => {
-    const response = await fastify.inject({
-      method: "GET",
-      url: "/health",
-    });
+  describe("GET /health", () => {
+    it("should return status ok", async () => {
+      const response = await fastify.inject({
+        method: "GET",
+        url: "/health",
+      });
 
-    expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual({ status: "ok" });
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual({ status: "ok" });
+    });
   });
 
-  it("should return the id for /receipts/process", async () => {
-    const response = await fastify.inject({
-      method: "POST",
-      url: "/receipts/process",
-      body: {
+  describe("POST /receipts/process", () => {
+    it("should return the id", async () => {
+      const response = await fastify.inject({
+        method: "POST",
+        url: "/receipts/process",
+        body: {
+          retailer: "Target",
+          purchaseDate: "2022-01-02",
+          purchaseTime: "13:01",
+          total: "6.49",
+          items: [],
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual({ id: expect.any(String) });
+    });
+
+    it("should return 400 for invalid receipt", async () => {
+      const response = await fastify.inject({
+        method: "POST",
+        url: "/receipts/process",
+        body: {
+          retailer: "Target",
+          purchaseDate: "2022-01-02",
+          purchaseTime: "13:0",
+          total: "6.49",
+          items: [],
+        },
+      });
+
+      expect(response.statusCode).toBe(400);
+    });
+  });
+
+  describe("GET /receipts/:id/points", () => {
+    it("should return a 400 for invalid id", async () => {
+      const response = await fastify.inject({
+        method: "GET",
+        url: "/receipts/123/points",
+      });
+
+      expect(response.statusCode).toBe(400);
+    });
+
+    it("should return a 404 if the receipt is not found", async () => {
+      const id = uuidv4();
+      const response = await fastify.inject({
+        method: "GET",
+        url: `/receipts/${id}/points`,
+      });
+
+      expect(response.statusCode).toBe(404);
+    });
+
+    it("should return points", async () => {
+      const receipt: Receipt = {
         retailer: "Target",
         purchaseDate: "2022-01-02",
         purchaseTime: "13:01",
         total: "6.49",
         items: [],
-      },
+      };
+
+      const processResponse = await fastify.inject({
+        method: "POST",
+        url: "/receipts/process",
+        payload: receipt,
+      });
+
+      const { id } = processResponse.json();
+
+      const pointsResponse = await fastify.inject({
+        method: "GET",
+        url: `/receipts/${id}/points`,
+      });
+
+      expect(pointsResponse.statusCode).toBe(200);
+      expect(pointsResponse.json()).toEqual({ points: 6 });
     });
-
-    expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual({ id: expect.any(String) });
-  });
-
-  it("should return a 400 for invalid id in /receipts/:id/points", async () => {
-    const response = await fastify.inject({
-      method: "GET",
-      url: "/receipts/123/points",
-    });
-
-    expect(response.statusCode).toBe(400);
-  });
-
-  it("should return a 404 for /receipts/:id/points if the receipt is not found", async () => {
-    const id = uuidv4();
-    const response = await fastify.inject({
-      method: "GET",
-      url: `/receipts/${id}/points`,
-    });
-
-    expect(response.statusCode).toBe(404);
-  });
-
-  it("should return points for /receipts/:id/points", async () => {
-    const receipt: Receipt = {
-      retailer: "Target",
-      purchaseDate: "2022-01-02",
-      purchaseTime: "13:01",
-      total: "6.49",
-      items: [],
-    };
-
-    const processResponse = await fastify.inject({
-      method: "POST",
-      url: "/receipts/process",
-      payload: receipt,
-    });
-
-    const { id } = processResponse.json();
-
-    const pointsResponse = await fastify.inject({
-      method: "GET",
-      url: `/receipts/${id}/points`,
-    });
-
-    expect(pointsResponse.statusCode).toBe(200);
-    expect(pointsResponse.json()).toEqual({ points: 6 });
   });
 
   describe("calculatePoints", () => {

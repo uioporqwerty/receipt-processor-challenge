@@ -3,6 +3,8 @@ import { v4 as uuidv4 } from "uuid";
 import { parseISO } from "date-fns";
 import { PointsParamsSchema as PointsParamsSchemaInterface } from "./types/pointsParams";
 import pointsParamsSchema from "./schemas/pointsParams.json";
+import { ReceiptProcessSchema as ReceiptProcessSchemaInterface } from "./types/receiptProcess";
+import receiptProcessSchema from "./schemas/receiptProcess.json";
 
 export interface Receipt {
   retailer: string;
@@ -24,15 +26,23 @@ export function build(opts = {}) {
   });
 
   app.post<{
-    Body: Receipt;
-  }>("/receipts/process", async (request, reply): Promise<{ id: string }> => {
-    const payload = request.body;
-    const id = uuidv4();
+    Body: ReceiptProcessSchemaInterface;
+  }>(
+    "/receipts/process",
+    {
+      schema: {
+        body: receiptProcessSchema,
+      },
+    },
+    async (request, reply): Promise<{ id: string }> => {
+      const payload = request.body;
+      const id = uuidv4();
 
-    receiptPoints[id] = getPointsBreakdown(payload).totalPoints;
+      receiptPoints[id] = getPointsBreakdown(payload).totalPoints;
 
-    return { id };
-  });
+      return { id };
+    }
+  );
 
   app.get<{
     Params: PointsParamsSchemaInterface;
