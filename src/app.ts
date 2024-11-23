@@ -1,6 +1,8 @@
 import fastify from "fastify";
 import { v4 as uuidv4 } from "uuid";
 import { parseISO } from "date-fns";
+import { PointsParamsSchema as PointsParamsSchemaInterface } from "./types/pointsParams";
+import pointsParamsSchema from "./schemas/pointsParams.json";
 
 export interface Receipt {
   retailer: string;
@@ -33,17 +35,25 @@ export function build(opts = {}) {
   });
 
   app.get<{
-    Params: { id: string };
-  }>("/receipts/:id/points", async (request, reply) => {
-    const { id } = request.params;
+    Params: PointsParamsSchemaInterface;
+  }>(
+    "/receipts/:id/points",
+    {
+      schema: {
+        params: pointsParamsSchema,
+      },
+    },
+    async (request, reply) => {
+      const { id } = request.params;
 
-    if (!receiptPoints[id]) {
-      reply.status(404);
-      return;
+      if (!receiptPoints[id]) {
+        reply.status(404);
+        return;
+      }
+
+      return { points: receiptPoints[id] };
     }
-
-    return { points: receiptPoints[id] };
-  });
+  );
   return app;
 }
 

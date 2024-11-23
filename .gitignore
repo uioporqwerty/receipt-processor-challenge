@@ -31,3 +31,6 @@ coverage/
 # Miscellaneous
 *.swp
 *.swo
+
+# Ignore generated types
+src/types/

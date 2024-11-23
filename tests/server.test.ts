@@ -1,6 +1,6 @@
 import { FastifyInstance } from "fastify";
 import { describe, it, expect } from "@jest/globals";
-
+import { v4 as uuidv4 } from "uuid";
 import { build, getPointsBreakdown, Receipt } from "../src/app";
 
 describe("Fastify API", () => {
@@ -41,10 +41,20 @@ describe("Fastify API", () => {
     expect(response.json()).toEqual({ id: expect.any(String) });
   });
 
-  it("should return a 404 for /receipts/:id/points if the receipt is not found", async () => {
+  it("should return a 400 for invalid id in /receipts/:id/points", async () => {
     const response = await fastify.inject({
       method: "GET",
       url: "/receipts/123/points",
+    });
+
+    expect(response.statusCode).toBe(400);
+  });
+
+  it("should return a 404 for /receipts/:id/points if the receipt is not found", async () => {
+    const id = uuidv4();
+    const response = await fastify.inject({
+      method: "GET",
+      url: `/receipts/${id}/points`,
     });
 
     expect(response.statusCode).toBe(404);
