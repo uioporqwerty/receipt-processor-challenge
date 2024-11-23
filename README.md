@@ -21,6 +21,12 @@ You can now make requests to `http://localhost:3000`. Verify things are running 
 
 If using insomnia, you can import the requests collection in the `insomnia` folder. This has sample requests made with an example in this README.
 
+## Other Notes
+
+While there may be best practices that could be adopted for separating out endpoints and moving logic/models to services and other modules, this implementation focuses on having a well tested implementation and performing input schema validation to ensure a stable solution.
+
+The `tests/server.test.ts` has many of the tests for implementing the endpoints and the point calculations.
+
 ## Description
 
 Build a webservice that fulfils the documented API. The API is described below. A formal definition is provided
