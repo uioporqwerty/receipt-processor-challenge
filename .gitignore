@@ -1,0 +1,33 @@
+# Node.js
+node_modules/
+dist/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# TypeScript
+*.tsbuildinfo
+
+# Logs
+logs
+*.log
+logs/*.log
+
+# Environment Variables
+.env
+
+# MacOS
+.DS_Store
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.sublime-workspace
+
+# Testing
+coverage/
+.jest/
+
+# Miscellaneous
+*.swp
+*.swo
